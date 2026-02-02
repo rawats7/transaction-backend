@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Transaction App</title>
+  <title>Transaction Manager</title>
+
+  <!-- Supabase Auth -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 900px;
+      padding: 15px;
+      max-width: 1000px;
       margin: auto;
     }
 
@@ -16,100 +21,222 @@
       margin-bottom: 10px;
     }
 
+    input, select, button {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Summary cards */
     .summary {
       display: flex;
-      gap: 20px;
-      margin-bottom: 20px;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 15px 0;
     }
 
     .card {
-      padding: 15px;
-      border-radius: 6px;
-      width: 200px;
+      flex: 1;
+      min-width: 150px;
+      padding: 12px;
       color: #fff;
+      border-radius: 6px;
+      text-align: center;
     }
 
     .in { background: #2ecc71; }
     .out { background: #e74c3c; }
     .balance { background: #3498db; }
 
-    input, select, button {
-      padding: 8px;
-      margin: 5px 0;
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 15px 0;
     }
 
+    /* Table */
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 15px;
     }
 
     th, td {
       border: 1px solid #ddd;
       padding: 8px;
       text-align: center;
+      font-size: 14px;
     }
 
     th {
       background: #f4f4f4;
+      position: sticky;
+      top: 0;
     }
 
     .green { color: green; }
     .red { color: red; }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+      th, td {
+        font-size: 12px;
+        padding: 6px;
+      }
+    }
   </style>
 </head>
 
 <body>
 
-  <h2>Transaction App</h2>
-
-  <!-- SUMMARY -->
-  <div class="summary">
-    <div class="card in">
-      <h4>Total IN</h4>
-      ₹ <span id="totalIn">0</span>
-    </div>
-    <div class="card out">
-      <h4>Total OUT</h4>
-      ₹ <span id="totalOut">0</span>
-    </div>
-    <div class="card balance">
-      <h4>Balance</h4>
-      ₹ <span id="balance">0</span>
-    </div>
+  <!-- LOGIN -->
+  <div id="authBox">
+    <h2>Login</h2>
+    <input id="email" type="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <p id="authError" style="color:red;"></p>
   </div>
 
-  <!-- FORM -->
-  <h3>Add Transaction</h3>
+  <!-- APP -->
+  <div id="app" class="hidden">
 
-  <input id="amount" type="number" placeholder="Amount" />
-  <select id="type">
-    <option value="IN">IN</option>
-    <option value="OUT">OUT</option>
-  </select>
-  <input id="note" type="text" placeholder="Note" />
-  <button onclick="addTransaction()">Add</button>
+    <h2>Transaction Manager</h2>
+    <button onclick="logout()">Logout</button>
 
-  <!-- TABLE -->
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Type</th>
-        <th>Amount</th>
-        <th>Note</th>
-      </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-  </table>
+    <!-- SUMMARY -->
+    <div class="summary">
+      <div class="card in">
+        <h4>Total IN</h4>
+        ₹ <span id="totalIn">0</span>
+      </div>
+      <div class="card out">
+        <h4>Total OUT</h4>
+        ₹ <span id="totalOut">0</span>
+      </div>
+      <div class="card balance">
+        <h4>Balance</h4>
+        ₹ <span id="balance">0</span>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters">
+      <select id="month" onchange="loadTransactions()">
+        <option value="">Month</option>
+        <option value="01">Jan</option>
+        <option value="02">Feb</option>
+        <option value="03">Mar</option>
+        <option value="04">Apr</option>
+        <option value="05">May</option>
+        <option value="06">Jun</option>
+        <option value="07">Jul</option>
+        <option value="08">Aug</option>
+        <option value="09">Sep</option>
+        <option value="10">Oct</option>
+        <option value="11">Nov</option>
+        <option value="12">Dec</option>
+      </select>
+
+      <select id="year" onchange="loadTransactions()">
+        <option value="">Year</option>
+        <script>
+          const y = new Date().getFullYear();
+          for (let i = y; i >= y - 5; i--) {
+            document.write(`<option value="${i}">${i}</option>`);
+          }
+        </script>
+      </select>
+    </div>
+
+    <!-- ADD TRANSACTION -->
+    <h3>Add Transaction</h3>
+    <input id="amount" type="number" placeholder="Amount" />
+    <select id="type">
+      <option value="IN">IN</option>
+      <option value="OUT">OUT</option>
+    </select>
+    <input id="note" type="text" placeholder="Note" />
+    <button onclick="addTransaction()">Add</button>
+
+    <!-- TABLE -->
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+
+  </div>
 
   <script>
-    const API = "YOUR_VERCEL_API_URL/api/transactions";
+    /************* CONFIG – YOU MUST CHANGE THESE *************/
+    const SUPABASE_URL = "https://cerzakhiydiezfpcfhbk.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlcnpha2hpeWRpZXpmcGNmaGJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwMjc1NzQsImV4cCI6MjA4NTYwMzU3NH0.LNzJ8wfnlBx8bU8nM41ntbE21m0QLkZzcqH36gQVI-o";
+    const API_BASE = "https://transaction-backend-g57g0yiyt-rajendra-singh-s-projects.vercel.app/";
+    /*********************************************************/
 
+    const supabase = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY
+    );
+
+    let session = null;
     let transactions = [];
 
+    async function login() {
+      const email = emailInput();
+      const password = passwordInput();
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email, password
+      });
+
+      if (error) {
+        authError().innerText = error.message;
+        return;
+      }
+
+      session = data.session;
+      showApp();
+      loadTransactions();
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      location.reload();
+    }
+
     async function loadTransactions() {
-      const res = await fetch(API);
+      const month = document.getElementById("month").value;
+      const year = document.getElementById("year").value;
+
+      let url = `${API_BASE}/api/transactions`;
+      if (month && year) {
+        url += `?month=${month}&year=${year}`;
+      }
+
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
       transactions = await res.json();
       renderTable();
       calculateSummary();
@@ -120,20 +247,19 @@
       const type = document.getElementById("type").value;
       const note = document.getElementById("note").value;
 
-      if (!amount || !note) {
-        alert("Enter amount and note");
-        return;
-      }
+      if (!amount || !note) return alert("Enter amount & note");
 
-      await fetch(API, {
+      await fetch(`${API_BASE}/api/transactions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ amount, type, note })
       });
 
       document.getElementById("amount").value = "";
       document.getElementById("note").value = "";
-
       loadTransactions();
     }
 
@@ -142,39 +268,52 @@
       body.innerHTML = "";
 
       transactions.forEach(t => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-          <td>${new Date(t.created_at).toLocaleDateString()}</td>
-          <td class="${t.type === 'IN' ? 'green' : 'red'}">${t.type}</td>
-          <td>₹ ${t.amount}</td>
-          <td>${t.note}</td>
+        body.innerHTML += `
+          <tr>
+            <td>${new Date(t.created_at).toLocaleDateString()}</td>
+            <td class="${t.type === 'IN' ? 'green' : 'red'}">
+              ${t.type === 'IN' ? '⬆️' : '⬇️'}
+            </td>
+            <td>₹ ${t.amount}</td>
+            <td>${t.note}</td>
+          </tr>
         `;
-
-        body.appendChild(row);
       });
     }
 
     function calculateSummary() {
-      let totalIn = 0;
-      let totalOut = 0;
+      let totalIn = 0, totalOut = 0;
 
       transactions.forEach(t => {
-        if (t.type === "IN") totalIn += Number(t.amount);
-        else totalOut += Number(t.amount);
+        t.type === "IN"
+          ? totalIn += Number(t.amount)
+          : totalOut += Number(t.amount);
       });
-
-      const balance = totalIn - totalOut;
 
       document.getElementById("totalIn").innerText = totalIn;
       document.getElementById("totalOut").innerText = totalOut;
-      document.getElementById("balance").innerText = balance;
+      document.getElementById("balance").innerText = totalIn - totalOut;
     }
 
-    // load on page open
-    loadTransactions();
+    function showApp() {
+      document.getElementById("authBox").classList.add("hidden");
+      document.getElementById("app").classList.remove("hidden");
+    }
+
+    function emailInput() { return document.getElementById("email").value; }
+    function passwordInput() { return document.getElementById("password").value; }
+    function authError() { return document.getElementById("authError"); }
+
+    // Auto login
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        session = data.session;
+        showApp();
+        loadTransactions();
+      }
+    })();
   </script>
 
 </body>
 </html>
-
